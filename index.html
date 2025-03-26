@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Network Tool</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Arial', sans-serif;
+      background-color: black;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-direction: column;
+      color: white;
+      text-align: center;
+    }
+
+    #matrix {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      z-index: -1;
+    }
+
+    .matrix-rain {
+      position: absolute;
+      top: 0;
+      left: 0;
+      color: #00ff00;
+      font-family: monospace;
+      font-size: 20px;
+      white-space: nowrap;
+      animation: rain 0.5s linear infinite;
+    }
+
+    @keyframes rain {
+      from {
+        top: -100px;
+      }
+      to {
+        top: 100vh;
+      }
+    }
+
+    .content {
+      z-index: 1;
+      width: 80%;
+      max-width: 600px;
+      padding: 30px;
+      border-radius: 8px;
+      background-color: rgba(0, 0, 0, 0.7);
+      box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+    }
+
+    h1 {
+      font-size: 32px;
+      color: #00ff00;
+      margin-bottom: 20px;
+      font-family: 'Courier New', Courier, monospace;
+    }
+
+    label, input, button {
+      font-size: 16px;
+      font-family: 'Arial', sans-serif;
+    }
+
+    input {
+      padding: 10px;
+      width: 100%;
+      margin: 10px 0;
+      border: 1px solid #00ff00;
+      border-radius: 5px;
+      background-color: rgba(0, 0, 0, 0.5);
+      color: white;
+    }
+
+    button {
+      padding: 12px 20px;
+      background-color: #00ff00;
+      color: black;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #009900;
+    }
+
+    .output {
+      margin-top: 20px;
+      padding: 15px;
+      background-color: #333;
+      border: 1px solid #00ff00;
+      border-radius: 5px;
+      box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+      white-space: pre-wrap;
+      font-family: 'Courier New', Courier, monospace;
+      color: #00ff00;
+      overflow-y: auto;
+      max-height: 400px;
+    }
+
+    #loading {
+      color: #00ff00;
+      font-size: 20px;
+      margin-top: 20px;
+    }
+
+    #downloadButton {
+      margin-top: 20px;
+      padding: 12px 20px;
+      background-color: #00ff00;
+      color: black;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+    }
+
+    #downloadButton:hover {
+      background-color: #009900;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="matrix"></div>
+
+  <div class="content">
+    <h1>Network Tool</h1>
+    <form id="toolForm">
+      <label for="target">Enter Target Domain or IP:</label>
+      <input type="text" id="target" name="target" required placeholder="e.g. example.com">
+      <button type="button" onclick="runScan()">Run Scan</button>
+    </form>
+
+    <div id="loading" style="display: none;">Running scan... Please wait.</div>
+
+    <div id="resultOutput" class="output"></div>
+
+    <!-- Download PDF Button -->
+    <button id="downloadButton" style="display: none;" onclick="downloadPDF()">Download Report</button>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <script>
+    function createMatrixRain() {
+      const matrix = document.getElementById("matrix");
+      const columns = Math.floor(window.innerWidth / 20);
+      const rows = Math.floor(window.innerHeight / 20);
+      const characters = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789@#$%^&*()_+~";
+      
+      for (let i = 0; i < columns; i++) {
+        const span = document.createElement("span");
+        span.classList.add("matrix-rain");
+        span.style.left = `${i * 20}px`;
+        matrix.appendChild(span);
+
+        const speed = Math.random() * 3 + 1;
+        span.style.animationDuration = `${speed}s`;
+
+        const rainEffect = setInterval(() => {
+          span.textContent = characters.charAt(Math.floor(Math.random() * characters.length));
+        }, 50);
+      }
+    }
+
+    window.onload = createMatrixRain;
+
+    function runScan() {
+      const target = document.getElementById("target").value;
+      document.getElementById("loading").style.display = "block";
+      document.getElementById("resultOutput").innerHTML = "";
+      document.getElementById("downloadButton").style.display = "none";
+
+      const formData = new FormData();
+      formData.append("target", target);
+
+      const xhr = new XMLHttpRequest();
+      xhr.open("POST", "scan.php", true);
+      xhr.onreadystatechange = function() {
+        if (xhr.readyState == 4 && xhr.status == 200) {
+          document.getElementById("loading").style.display = "none";
+          document.getElementById("resultOutput").innerHTML = xhr.responseText;
+          document.getElementById("downloadButton").style.display = "inline-block";
+        }
+      };
+      xhr.send(formData);
+    }
+
+    function downloadPDF() {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+
+      // Get the output content
+      const outputContent = document.getElementById("resultOutput").innerText;
+
+      // Add content to the PDF
+      doc.text(outputContent, 10, 10);
+
+      // Save the PDF
+      doc.save('scan_report.pdf');
+    }
+  </script>
+
+</body>
+</html>
